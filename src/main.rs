@@ -2,7 +2,7 @@
 use std::{io::Write, net::{TcpListener, TcpStream}};
 
 fn handle_client(mut s : TcpStream) -> &'static str{
-    let response =  "HTTP/1.1 200 PONG\r\n";
+    let response =  "+PONG\r\n";
     s.write_all(response.as_bytes()).expect("stream should have written");
     "asdsf"
 }
