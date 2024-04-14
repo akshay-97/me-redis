@@ -1,9 +1,17 @@
 // Uncomment this block to pass the first stage
-use std::{io::Write, net::{TcpListener, TcpStream}};
+use std::{io::Write, io::Read, net::{TcpListener, TcpStream}};
 
-fn handle_client(mut s : TcpStream) -> &'static str{
-    let response =  "+PONG\r\n";
-    s.write_all(response.as_bytes()).expect("stream should have written");
+fn handle_client(s : &mut TcpStream) -> &'static str{
+    let mut buf = vec![];
+    loop {
+        let count = s.read(&mut buf).expect("read stream");
+        if count ==0{
+            break;
+        }
+        let response =  "+PONG\r\n";
+        s.write_all(response.as_bytes()).expect("stream should have written");
+    }
+    
     //s.write_all(response.as_bytes()).expect("stream should have written");
     "asdsf"
 }
@@ -14,8 +22,8 @@ fn main() {
     
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => {
-                handle_client(stream);
+            Ok(mut stream) => {
+                handle_client(&mut stream);
                 println!("accepted  connection");
             }
             Err(e) => {
