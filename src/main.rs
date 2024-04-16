@@ -1,7 +1,7 @@
 // Uncomment this block to pass the first stage
 use std::{io::Write, io::Read, net::{TcpListener, TcpStream}};
 
-fn handle_client(s : &mut TcpStream) -> &'static str{
+fn handle_client(mut s : TcpStream) -> &'static str{
     let mut buf = vec![];
     loop {
         let count = s.read(&mut buf).expect("read stream");
@@ -22,8 +22,8 @@ fn main() {
     
     for stream in listener.incoming() {
         match stream {
-            Ok(mut stream) => {
-                handle_client(&mut stream);
+            Ok(stream) => {
+                handle_client(stream);
                 println!("accepted  connection");
             }
             Err(e) => {
