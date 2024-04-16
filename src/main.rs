@@ -2,14 +2,17 @@
 use std::{io::Write, io::Read, net::{TcpListener, TcpStream}};
 
 fn handle_client(mut s : TcpStream) -> &'static str{
-    let mut buf = vec![];
+    let mut buf = [0;512];
     loop {
+        
+        let count = s.read(&mut buf).expect("read stream");
+        //println!("{}", count);
+        if count ==0{
+            break;
+        }
         let response =  "+PONG\r\n";
         s.write_all(response.as_bytes()).expect("stream should have written");
-        let count = s.read(&mut buf).expect("read stream");
-        // if count ==0{
-        //     break;
-        // }
+
     }
     
     //s.write_all(response.as_bytes()).expect("stream should have written");
