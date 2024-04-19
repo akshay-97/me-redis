@@ -27,7 +27,7 @@ impl Pool{
             capacity : 10,
             workers: {
                 let mut w = Vec::with_capacity(10);
-                for i in 0..10{
+                for _i in 0..10{
                     w.push(Worker{is_available : true});
                 }
                 w
@@ -73,14 +73,15 @@ impl Worker{
 }
 
 fn main() {
-
-    let listener = TcpListener::bind("127.0.0.1:6370").unwrap();
-    let mut thread_pool = Pool::new(); //initiate_pool();
+    let args: Vec<String> = std::env::args().collect();
+    let port = args.get(1).map_or(6379, |v| v.as_str().parse::<u32>().unwrap());
+    let address  = format!("127.0.0.1:{}", port);
+    let listener = TcpListener::bind(address).unwrap();
+    let mut thread_pool = Pool::new(); 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
                 thread_pool.execute( || handle_client(stream));
-                //println!("accepted  connection");
             }
             Err(e) => {
                 println!("error: {}", e);
