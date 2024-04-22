@@ -15,7 +15,7 @@ fn handle_client(mut s : TcpStream){
         }
 
         let (parsed_input, _) = decode_resp(&buf).expect("unexpected decode");
-
+        println!("{:?}", parsed_input);
         let mut response = Resp::Nil;
 
         match parsed_input{

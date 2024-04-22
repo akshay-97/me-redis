@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, path::Display};
+use std::collections::VecDeque;
 
 #[derive(Debug)]
 pub enum Resp{
@@ -11,13 +11,13 @@ pub enum Resp{
 
 
 impl Resp{
-    pub fn get_str(self) -> Option<String>{
-        match self{
-            Resp::BulkStr(s) => Some(s),
-            Resp::SimpleStr(s) => Some(s),
-            _ => None
-        }
-    }
+    // pub fn get_str(self) -> Option<String>{
+    //     match self{
+    //         Resp::BulkStr(s) => Some(s),
+    //         Resp::SimpleStr(s) => Some(s),
+    //         _ => None
+    //     }
+    // }
 
     pub fn if_str(&self) -> bool{
         match self{
@@ -27,7 +27,7 @@ impl Resp{
     }
 }
 
-pub type InputResult<F> = Result<F, InputError>;
+//pub type InputResult<F> = Result<F, InputError>;
 pub type InputError = String;
 
 const CLRF: [u8;2] = [13, 10];
@@ -94,12 +94,12 @@ fn decode_list(input : &[u8]) -> Option<(VecDeque<Resp>, &[u8])>{
     if length == 0{
         return Some((vec_res, reste))
     }
-    let mut iter = 0;
-    while iter < length  {
+    let mut _iter = 0;
+    while _iter < length  {
         if let Some((resp_result, rester)) = decode_resp(reste){
             vec_res.push_back(resp_result);
             reste = rester;
-            iter += 1;
+            _iter += 1;
         }
         break;
     }
@@ -122,7 +122,7 @@ pub fn decode_resp(input : &[u8]) -> Option<(Resp, &[u8])>{
         (b"$", rest) => decode_string(rest).map(|(res, rest)| (Resp::BulkStr(res), rest)),
         (b":", rest) => decode_int(rest).map(|(res, rest)| (Resp::Num(res), rest)),
         (b"+", rest) => decode_simple_string(rest).map(|(res, rest)| (Resp::SimpleStr(res),rest)),
-        (head, tail) => {
+        (_head, _tail) => {
             //println!("{:?}", std::str::from_utf8(head));
             None
         },
