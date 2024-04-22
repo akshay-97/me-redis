@@ -34,7 +34,7 @@ fn handle_client(mut s : TcpStream){
                             .expect("echo value invalid")
                     },
                     Some(Resp::BulkStr(s)) if s == "ping" => {
-                        response = Resp::BulkStr("PONG".to_owned());
+                        response = Resp::SimpleStr("PONG".to_owned());
                     },
                     _ => {}
                 }

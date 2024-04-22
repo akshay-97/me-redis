@@ -31,7 +31,7 @@ pub type InputResult<F> = Result<F, InputError>;
 pub type InputError = String;
 
 const CLRF: [u8;2] = [13, 10];
-const STR_CLRF : &'static str = "/r/n"; 
+const STR_CLRF : &'static str = "\r\n"; 
 
 fn check_clrf(input : &[u8]) -> Result<&[u8], InputError>{
     if input.starts_with(&CLRF){
