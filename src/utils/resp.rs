@@ -140,7 +140,7 @@ impl Encoder for Resp{
     fn encode(self) -> Option<Self::Output>{
         match self{
             Resp::BulkStr(s) =>
-                Some(["$", format!("{} ", s.len()).as_str(), STR_CLRF, s.as_str(), STR_CLRF].concat().to_owned()),
+                Some(["$", format!("{}", s.len()).as_str(), STR_CLRF, s.as_str(), STR_CLRF].concat().to_owned()),
             Resp::SimpleStr(s) =>
                 Some(["+", s.as_str(), STR_CLRF].concat().to_owned()),
             _ => None,

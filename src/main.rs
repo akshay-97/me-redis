@@ -13,7 +13,6 @@ fn handle_client(mut s : TcpStream){
             println!("end of connection");
             break;
         }
-        println!("{:?}", buf);
 
         let (parsed_input, _) = decode_resp(&buf).expect("unexpected decode");
 
@@ -21,7 +20,7 @@ fn handle_client(mut s : TcpStream){
 
         match parsed_input{
             Resp::BulkStr(str) if str.eq("ping") => {
-                response = Resp::BulkStr("PONG".to_owned());
+                response = Resp::SimpleStr("PONG".to_owned());
             },
             Resp::Arr(mut list) => {
                 let first_val  = list.pop_front();
