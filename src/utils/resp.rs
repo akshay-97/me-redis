@@ -94,14 +94,15 @@ fn decode_list(input : &[u8]) -> Option<(VecDeque<Resp>, &[u8])>{
     if length == 0{
         return Some((vec_res, reste))
     }
-    let mut _iter = 0;
-    while _iter < length  {
+    let mut iter = 0;
+    while iter < length  {
         if let Some((resp_result, rester)) = decode_resp(reste){
+            
             vec_res.push_back(resp_result);
             reste = rester;
-            _iter += 1;
+            iter += 1;
         }
-        break;
+        else{ break; }
     }
 
     return Some((vec_res, reste))
@@ -123,7 +124,6 @@ pub fn decode_resp(input : &[u8]) -> Option<(Resp, &[u8])>{
         (b":", rest) => decode_int(rest).map(|(res, rest)| (Resp::Num(res), rest)),
         (b"+", rest) => decode_simple_string(rest).map(|(res, rest)| (Resp::SimpleStr(res),rest)),
         (_head, _tail) => {
-            //println!("{:?}", std::str::from_utf8(head));
             None
         },
     }
@@ -154,14 +154,14 @@ pub mod tests{
     #[test]
     pub fn test_1(){
         let input = "*1\r\n$4\r\nping\r\n".as_bytes();
-        let (res, _ ) = decode_resp(input).unwrap();
-        println!("{:?}", res);
+        let (_res, _ ) = decode_resp(input).unwrap();
+       // println!("{:?}", res);
     }
 
     #[test]
     pub fn test_clrf(){
-        let input = "\r\n".as_bytes();
-        println!("{:?}",check_clrf(input));
+        let _input = "\r\n".as_bytes();
+       // println!("{:?}",check_clrf(input));
     }
 
     #[test]
@@ -169,5 +169,12 @@ pub mod tests{
         let input = "1\r\nasd".as_bytes();
         let (r, _) = decode_int(input).unwrap();
         assert_eq!(r, 1);
+    }
+
+    #[test]
+    pub fn test_list(){
+        let input = "*2\r\n$4\r\necho\r\n$3\r\nhey\r\n".as_bytes();
+        let (_r,_) = decode_resp(&input).unwrap();
+        // println!("{:?}", Encoder::encode(r));
     }
 }
