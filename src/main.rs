@@ -84,7 +84,7 @@ fn handle_client(mut s : TcpStream, store : InMem){
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let port = args.get(1).map_or(6379, |v| v.as_str().parse::<u32>().unwrap());
+    let port = args.get(2).map_or(6379, |v| v.as_str().parse::<u32>().unwrap());
     let address  = format!("127.0.0.1:{}", port);
     let listener = TcpListener::bind(address).unwrap();
     let mut thread_pool = pool::Pool::new(); 
