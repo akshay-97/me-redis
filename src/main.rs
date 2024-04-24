@@ -11,12 +11,11 @@ fn handle_client(mut s : TcpStream, store : InMem){
         
         let count = s.read(&mut buf).expect("read stream");
         if count ==0{
-            println!("end of connection");
             break;
         }
 
         let (parsed_input, _) = decode_resp(&buf).expect("unexpected decode");
-        println!("{:?}", parsed_input);
+
         let mut response = Resp::Nil;
 
         match parsed_input{
@@ -53,7 +52,8 @@ fn handle_client(mut s : TcpStream, store : InMem){
                                 list
                                     .pop_front()
                                     .and_then(|v| {
-                                        (&store).set(str_key, v).ok()
+                                        let ttl = list.pop_front().and_then(|x| x.get_int());
+                                        (&store).set(str_key, v, ttl).ok()
                                     })
                                 }
                             ).map(|_| {response = Resp::SimpleStr("OK".to_owned());});

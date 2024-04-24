@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
 pub enum Resp{
-    Num(i32),
+    Num(i64),
     SimpleStr(String),
     BulkStr(String),
     Nil,
@@ -25,6 +25,13 @@ impl Resp{
             _ => false
         }
     }
+
+    pub fn get_int(self) -> Option<i64>{
+        match self{
+            Resp::Num(n) => Some(n),
+            _ => None
+        }
+    }
 }
 
 //pub type InputResult<F> = Result<F, InputError>;
@@ -45,7 +52,7 @@ fn decode_string(input : &[u8]) -> Option<(String, &[u8])>{
     let (len, strt) = input.split_at(1);
     let str_len = std::str::from_utf8(len)
             .ok()
-            .and_then(|x| x.parse::<i32>().ok())?;
+            .and_then(|x| x.parse::<i64>().ok())?;
 
     check_clrf(strt)
         .ok()
@@ -74,12 +81,12 @@ fn decode_simple_string(input : &[u8]) -> Option<(String, &[u8])>{
     Some((res_str, rest))
 }
 
-fn decode_int(input: &[u8]) -> Option<(i32, &[u8])>{
+fn decode_int(input: &[u8]) -> Option<(i64, &[u8])>{
     let mut n = 0;
     let mut pointer = 0;
     while pointer < input.len() && input[pointer].is_ascii_digit(){
         let digit = std::str::from_utf8(&input[pointer..(pointer +1)]).ok()
-            .and_then(|x| x.parse::<i32>().ok())
+            .and_then(|x| x.parse::<i64>().ok())
             .unwrap_or(0);
         n = n *10 + digit;
         pointer += 1;
