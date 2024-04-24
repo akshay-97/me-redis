@@ -74,9 +74,8 @@ fn handle_client(mut s : TcpStream, store : InMem){
                         list
                             .pop_front()
                             .and_then(|x| x.get_str())
-                            .map(|str_key| if str_key == "replication"{
-                                response = Resp::BulkStr("role:master".to_owned());
-                            }
+                            .map(|str_key| 
+                                {response = Resp::BulkStr("role:master".to_owned());}
                             );
                     },
                     _ => {}
