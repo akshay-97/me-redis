@@ -31,6 +31,7 @@ impl InMem{
     }
 
     pub fn set(&self, key: String, value : Resp, ttl : Option<i64>) -> Result<(), String>{
+        print!("what");
         let mut store = self.dat.lock().unwrap();
         let time_param = ttl
             .and_then(|x| TryInto::try_into(x).ok())
