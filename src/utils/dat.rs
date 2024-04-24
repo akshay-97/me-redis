@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 type Val = (Resp, Option<(SystemTime, u128)>);
-pub type Map = HashMap<String, Val>;
+type Map = HashMap<String, Val>;
 
 // INCOMING SHIT CODE, PLEASE REFACTOR
 pub struct InMem {
