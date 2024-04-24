@@ -61,7 +61,10 @@ fn handle_client(mut s : TcpStream, store : InMem){
                                                 else{
                                                     None
                                                 }))
-                                            .and_then(|_| list.pop_front().and_then(|x| x.get_int()));
+                                            .and_then(|_| list.pop_front()
+                                                            .and_then(|x| x.get_str())
+                                                            .and_then(|x| x.parse::<u128>().ok())
+                                                    );
                                         (&store).set(str_key, v, ttl).ok()
                                     })
                                 }

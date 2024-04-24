@@ -27,12 +27,12 @@ impl Resp{
         }
     }
 
-    pub fn get_int(self) -> Option<i64>{
-        match self{
-            Resp::Num(n) => Some(n),
-            _ => None
-        }
-    }
+    // pub fn get_int(self) -> Option<i64>{
+    //     match self{
+    //         Resp::Num(n) => Some(n),
+    //         _ => None
+    //     }
+    // }
 }
 
 //pub type InputResult<F> = Result<F, InputError>;
@@ -187,5 +187,10 @@ pub mod tests{
         let input = "*2\r\n$4\r\necho\r\n$3\r\nhey\r\n".as_bytes();
         let (_r,_) = decode_resp(&input).unwrap();
         // println!("{:?}", Encoder::encode(r));
+    }
+    #[test]
+    pub fn encode_list(){
+        let input = VecDeque::from([Resp::BulkStr("set".to_string()), Resp::BulkStr("foo".to_string()),Resp::BulkStr("bar".to_string()),Resp::BulkStr("px".to_string()), Resp::Num(100)]);
+        println!("{:?}", Encoder::encode(Resp::Arr(input)));
     }
 }
