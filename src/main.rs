@@ -53,7 +53,8 @@ fn handle_client(mut s : TcpStream, store : InMem){
                                     .pop_front()
                                     .and_then(|v| {
                                         //let ttl = list.pop_front().and_then(|x| x.get_int());
-                                        (&store).set(str_key, v, None).ok()
+                                        let ttl = None;
+                                        (&store).set(str_key, v, ttl).ok()
                                     })
                                 }
                             ).map(|_| {response = Resp::SimpleStr("OK".to_owned());});
