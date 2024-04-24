@@ -72,12 +72,7 @@ fn handle_client(mut s : TcpStream, store : InMem){
                             ).map(|_| {response = Resp::SimpleStr("OK".to_owned());});
                     },
                     Some(Resp::BulkStr(s)) if s == "INFO" || s == "info" => {
-                        list
-                            .pop_front()
-                            .and_then(|x| x.get_str())
-                            .map(|str_key| 
-                                {response = Resp::BulkStr("role:master".to_owned());}
-                            );
+                       response = Resp::BulkStr("role:master".to_owned());
                     },
                     _ => {}
                 }
