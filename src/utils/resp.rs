@@ -11,6 +11,7 @@ pub enum Resp{
 
 
 impl Resp{
+    //cant this be a reference
     pub fn get_str(self) -> Option<String>{
         match self{
             Resp::BulkStr(s) => Some(s),

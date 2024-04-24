@@ -52,7 +52,16 @@ fn handle_client(mut s : TcpStream, store : InMem){
                                 list
                                     .pop_front()
                                     .and_then(|v| {
-                                        let ttl = list.pop_front().and_then(|x| x.get_int());
+                                        let ttl = list
+                                            .pop_front()
+                                            .and_then(|x| x.get_str().and_then(|option_ttl|
+                                                if option_ttl == "px" {
+                                                    Some(())
+                                                }
+                                                else{
+                                                    None
+                                                }))
+                                            .and_then(|_| list.pop_front().and_then(|x| x.get_int()));
                                         (&store).set(str_key, v, ttl).ok()
                                     })
                                 }
