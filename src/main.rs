@@ -3,8 +3,9 @@ mod utils;
 
 use utils::pool;
 use utils::resp::{decode_resp, Resp, Encoder};
+use utils::dat::InMem;
 
-fn handle_client(mut s : TcpStream){
+fn handle_client(mut s : TcpStream, store : InMem){
     let mut buf = [0;512];
     loop {
         
@@ -36,6 +37,27 @@ fn handle_client(mut s : TcpStream){
                     Some(Resp::BulkStr(s)) if s == "ping" => {
                         response = Resp::SimpleStr("PONG".to_owned());
                     },
+                    Some(Resp::BulkStr(s)) if s == "get" => {
+                        list
+                            .pop_front()
+                            .and_then(|x| x.get_str())
+                            .and_then(|str_key| (&store).get(str_key.as_str()))
+                            .map(|x| {response = x;});
+
+                    },
+                    Some(Resp::BulkStr(s)) if s == "set" => {
+                        list
+                            .pop_front()
+                            .and_then(|x| x.get_str())
+                            .and_then(|str_key| {
+                                list
+                                    .pop_front()
+                                    .and_then(|v| {
+                                        (&store).set(str_key, v).ok()
+                                    })
+                                }
+                            ).map(|_| {response = Resp::SimpleStr("OK".to_owned());});
+                    }
                     _ => {}
                 }
             }
@@ -54,10 +76,12 @@ fn main() {
     let address  = format!("127.0.0.1:{}", port);
     let listener = TcpListener::bind(address).unwrap();
     let mut thread_pool = pool::Pool::new(); 
+    let store = InMem::new();
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                thread_pool.execute( || handle_client(stream));
+                let store = store.clone();
+                thread_pool.execute( move || handle_client(stream, store));
             }
             Err(e) => {
                 println!("error: {}", e);

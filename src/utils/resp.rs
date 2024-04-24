@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Resp{
     Num(i32),
     SimpleStr(String),
@@ -11,13 +11,13 @@ pub enum Resp{
 
 
 impl Resp{
-    // pub fn get_str(self) -> Option<String>{
-    //     match self{
-    //         Resp::BulkStr(s) => Some(s),
-    //         Resp::SimpleStr(s) => Some(s),
-    //         _ => None
-    //     }
-    // }
+    pub fn get_str(self) -> Option<String>{
+        match self{
+            Resp::BulkStr(s) => Some(s),
+            Resp::SimpleStr(s) => Some(s),
+            _ => None
+        }
+    }
 
     pub fn if_str(&self) -> bool{
         match self{
@@ -32,6 +32,7 @@ pub type InputError = String;
 
 const CLRF: [u8;2] = [13, 10];
 const STR_CLRF : &'static str = "\r\n"; 
+//const NILL_STR : &'static str = "$-1\r\n";
 
 fn check_clrf(input : &[u8]) -> Result<&[u8], InputError>{
     if input.starts_with(&CLRF){
@@ -143,6 +144,8 @@ impl Encoder for Resp{
                 Some(["$", format!("{}", s.len()).as_str(), STR_CLRF, s.as_str(), STR_CLRF].concat().to_owned()),
             Resp::SimpleStr(s) =>
                 Some(["+", s.as_str(), STR_CLRF].concat().to_owned()),
+            Resp::Nil =>
+                Some("$-1\r\n".to_string()),
             _ => None,
         }
     }
