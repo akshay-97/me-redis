@@ -140,10 +140,12 @@ impl AppState {
                     let addr = format!("{}:{}", &host, &port);
                     let mut stream = TcpStream::connect(addr).expect("connection to master failed");
                     stream.write_all("*1\r\n$4\r\nping\r\n".as_bytes())
+                        .and_then(|_| stream.read(&mut [0;128]))
                         .and_then(|_| {
                             let request = format!("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n{}\r\n", current_port);
                             stream.write_all(request.as_bytes())
                         })
+                        .and_then(|_| stream.read(&mut [0128]))
                         .and_then(|_| stream.write_all("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n".as_bytes())).expect("error sending data to master");
                     Info::Replica(ReplicaInfo{
                         _master_host : host,
