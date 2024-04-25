@@ -126,7 +126,7 @@ impl ReplicaInfo{
 }
 
 impl AppState {
-    fn new(master_info : Option<Vec<String>>) -> Self{
+    fn new(master_info : Option<Vec<String>>, current_port : u32) -> Self{
         Self{
             store : InMem::new(),
             server_info: master_info
@@ -139,7 +139,12 @@ impl AppState {
                     
                     let addr = format!("{}:{}", &host, &port);
                     let mut stream = TcpStream::connect(addr).expect("connection to master failed");
-                    stream.write_all("*1\r\n$4\r\nping\r\n".as_bytes()).unwrap();
+                    stream.write_all("*1\r\n$4\r\nping\r\n".as_bytes())
+                        .and_then(|_| {
+                            let request = format!("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n{}\r\n", current_port);
+                            stream.write_all(request.as_bytes())
+                        })
+                        .and_then(|_| stream.write_all("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n".as_bytes())).expect("error sending data to master");
                     Info::Replica(ReplicaInfo{
                         _master_host : host,
                         _master_port : port,
@@ -165,6 +170,6 @@ impl Clone for AppState {
         }
     }
 }
-pub fn make_app_state(master_info : Option<Vec<String>>) -> AppState{
-    AppState::new(master_info)
+pub fn make_app_state(master_info : Option<Vec<String>>, current_port : u32) -> AppState{
+    AppState::new(master_info, current_port)
 }

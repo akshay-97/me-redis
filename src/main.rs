@@ -19,7 +19,7 @@ fn main() {
     let address  = format!("127.0.0.1:{}", port);
     let listener = TcpListener::bind(address).unwrap();
     let mut thread_pool = pool::Pool::new();
-    let app_state = app::make_app_state(args.replicaof);
+    let app_state = app::make_app_state(args.replicaof, port);
     let app = Box::leak(Box::new(app_state));
     for stream in listener.incoming() {
         match stream {
