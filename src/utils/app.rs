@@ -70,6 +70,9 @@ pub fn handle_client(mut s : TcpStream, state : &AppState){
                     Some(Resp::BulkStr(s)) if s == "INFO" || s == "info" => {
                        response = Resp::BulkStr(state.server_info.get_info());
                     },
+                    Some(Resp::BulkStr(s)) if s == "REPLCONF" => {
+                        response =Resp::SimpleStr("OK".to_owned());
+                     },
                     _ => {}
                 }
             }
