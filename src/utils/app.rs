@@ -72,7 +72,11 @@ pub fn handle_client(mut s : TcpStream, state : &AppState){
                     },
                     Some(Resp::BulkStr(s)) if s == "REPLCONF" => {
                         response =Resp::SimpleStr("OK".to_owned());
-                     },
+                    },
+                    Some(Resp::BulkStr(s)) if s == "PSYNC" => {
+                        let dat = format!("+FULLRESYNC {} 0\r\n", state.server_info.get_repl_id().unwrap_or(""));
+                        response = Resp::SimpleStr(dat);
+                    },
                     _ => {}
                 }
             }
@@ -102,6 +106,13 @@ impl Info{
             Info::Replica(_) => ReplicaInfo::get_info(),
         }
     }
+
+    fn get_repl_id(&self) -> Option<&str>{
+        match self{
+            Info::Master(m) => Some(m.get_repl_id()),
+            Info::Replica(_) => None,
+        }
+    }
 }
 #[derive(Clone)]
 struct MasterInfo {
@@ -112,6 +123,10 @@ struct MasterInfo {
 impl MasterInfo{
     fn get_info(&self) -> String{
         format!("role:master\nmaster_replid:{}\nmaster_repl_offset:{}",self.master_replid, self.master_repl_offset)
+    }
+
+    fn get_repl_id(&self) -> &str{
+        &self.master_replid
     }
 }
 
