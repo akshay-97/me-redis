@@ -69,12 +69,7 @@ pub fn handle_client(mut s : TcpStream, state : AppState){
                             ).map(|_| {response = Resp::SimpleStr("OK".to_owned());});
                     },
                     Some(Resp::BulkStr(s)) if s == "INFO" || s == "info" => {
-                       if state.is_master(){
-                            response = Resp::BulkStr("role:master".to_owned());
-                       }
-                       else {
-                        response = Resp::BulkStr("role:slave".to_owned());
-                       }
+                       response = Resp::BulkStr(state.server_info.get_info());
                     },
                     _ => {}
                 }
@@ -96,18 +91,45 @@ enum Info{
     Master(MasterInfo),
     Replica(ReplicaInfo)
 }
+
+impl Info{
+    fn get_info(&self) -> String{
+        match self{
+            Info::Master(m) => m.get_info(),
+            Info::Replica(_) => ReplicaInfo::get_info(),
+        }
+    }
+}
 #[derive(Clone)]
-struct MasterInfo {}
+struct MasterInfo {
+    master_replid : String,
+    master_repl_offset : u32,
+}
+
+impl MasterInfo{
+    fn get_info(&self) -> String{
+        format!("role:master\nmaster_replid:{}\nmaster_repl_offset:{}",self.master_replid, self.master_repl_offset)
+    }
+}
 
 #[derive(Clone)]
 struct ReplicaInfo {}
+
+impl ReplicaInfo{
+    fn get_info() -> String{
+        String::from("role:slave")
+    }
+}
 
 impl AppState {
     fn new(master_info : Option<Vec<String>>) -> Self{
         Self{
             store : InMem::new(),
             server_info: master_info
-                .map_or(Info::Master(MasterInfo{}), |_| Info::Replica(ReplicaInfo{}))
+                .map_or(Info::Master(MasterInfo{
+                    master_replid : "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb".to_string(),
+                    master_repl_offset : 0
+                }), |_| Info::Replica(ReplicaInfo{}))
         }
     }
 
