@@ -73,7 +73,7 @@ pub fn handle_client(mut s : TcpStream, state : AppState){
                             response = Resp::BulkStr("role:master".to_owned());
                        }
                        else {
-                        response = Resp::BulkStr("slave:master".to_owned());
+                        response = Resp::BulkStr("role:slave".to_owned());
                        }
                     },
                     _ => {}
