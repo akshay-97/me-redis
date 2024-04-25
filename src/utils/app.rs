@@ -30,7 +30,7 @@ pub fn handle_client(mut s : TcpStream, state : &AppState){
                             } else {None})
                             .expect("echo value invalid")
                     },
-                    Some(Resp::BulkStr(s)) if s == "ping" => {
+                    Some(Resp::BulkStr(s)) if s == "ping" || s == "PING" => {
                         response = Resp::SimpleStr("PONG".to_owned());
                     },
                     Some(Resp::BulkStr(s)) if s == "get" => {
