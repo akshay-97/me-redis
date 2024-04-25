@@ -147,7 +147,10 @@ impl AppState {
                         })
                         .and_then(|_| stream.read(&mut [0;128]))
                         .and_then(|_| stream.write_all("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n".as_bytes()))
-                        .and_then(|_| stream.read(&mut [0;128])).unwrap();
+                        .and_then(|_| stream.read(&mut [0;128]))
+                        .and_then(|_| stream.write_all("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n".as_bytes()))
+                        .and_then(|_| stream.read(&mut [0;128]))
+                        .expect("handshake to master failed");
 
                     Info::Replica(ReplicaInfo{
                         _master_host : host,
