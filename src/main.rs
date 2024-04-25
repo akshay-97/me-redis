@@ -20,11 +20,12 @@ fn main() {
     let listener = TcpListener::bind(address).unwrap();
     let mut thread_pool = pool::Pool::new();
     let app_state = app::make_app_state(args.replicaof);
+    let app = Box::leak(Box::new(app_state));
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                let app = app_state.clone();
-                thread_pool.execute( move || app::handle_client(stream, app));
+                let app_pointer = &*app;
+                thread_pool.execute( move || app::handle_client(stream, app_pointer));
             }
             Err(e) => {
                 println!("error: {}", e);

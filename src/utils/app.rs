@@ -2,7 +2,7 @@ use std::net::TcpStream;
 use std::io::{Read, Write};
 use crate::utils::{dat::InMem, resp::{Resp, Encoder, decode_resp}};
 
-pub fn handle_client(mut s : TcpStream, state : AppState){
+pub fn handle_client(mut s : TcpStream, state : &AppState){
     let mut buf = [0;512];
     loop {
         
@@ -12,7 +12,6 @@ pub fn handle_client(mut s : TcpStream, state : AppState){
         }
 
         let (parsed_input, _) = decode_resp(&buf).expect("unexpected decode");
-        println!("what is input {:?}", parsed_input);
 
         let mut response = Resp::Nil;
 
@@ -83,7 +82,8 @@ pub fn handle_client(mut s : TcpStream, state : AppState){
 
 pub struct AppState{
     store : InMem,
-    server_info : Info
+    server_info : Info,
+   // pool : 
 }
 
 #[derive(Clone)]
@@ -113,7 +113,11 @@ impl MasterInfo{
 }
 
 #[derive(Clone)]
-struct ReplicaInfo {}
+struct ReplicaInfo {
+    _master_host : String,
+    _master_port : u32,
+    //connection : Rc<TcpStream>
+}
 
 impl ReplicaInfo{
     fn get_info() -> String{
@@ -129,11 +133,23 @@ impl AppState {
                 .map_or(Info::Master(MasterInfo{
                     master_replid : "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb".to_string(),
                     master_repl_offset : 0
-                }), |_| Info::Replica(ReplicaInfo{}))
+                }), |mut master_inf| {
+                    let port = master_inf.pop().and_then(|x| x.parse::<u32>().ok()).unwrap_or(6379);
+                    let host = master_inf.pop().unwrap_or("localhost".to_string());
+                    
+                    let addr = format!("{}:{}", &host, &port);
+                    let mut stream = TcpStream::connect(addr).expect("connection to master failed");
+                    stream.write_all("*1\r\n$4\r\nping\r\n".as_bytes()).unwrap();
+                    Info::Replica(ReplicaInfo{
+                        _master_host : host,
+                        _master_port : port,
+                        //connection  : stream,
+                    })}
+                )
         }
     }
 
-    fn is_master(&self) -> bool{
+    fn _is_master(&self) -> bool{
         match (&self).server_info{
             Info::Master(_) => true,
             Info::Replica(_) => false,
