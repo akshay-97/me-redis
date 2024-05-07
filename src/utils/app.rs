@@ -35,7 +35,7 @@ pub fn handle_client(mut stream : TcpStream, state : &AppState){
                     Some(Resp::BulkStr(s)) if s == "ping" || s == "PING" => {
                         response = Resp::SimpleStr("PONG".to_owned());
                     },
-                    Some(Resp::BulkStr(s)) if s == "get" => {
+                    Some(Resp::BulkStr(s)) if s == "get" || s == "GET"=> {
                         list
                             .pop_front()
                             .and_then(|x| x.get_str())
@@ -43,7 +43,7 @@ pub fn handle_client(mut stream : TcpStream, state : &AppState){
                             .map(|x| {response = x;});
 
                     },
-                    Some(Resp::BulkStr(s)) if s == "set" => {
+                    Some(Resp::BulkStr(s)) if s == "set" || s == "SET"=> {
                         list
                             .pop_front()
                             .and_then(|x| x.get_str())
