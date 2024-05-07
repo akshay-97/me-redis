@@ -224,4 +224,10 @@ pub mod tests{
         let input = VecDeque::from([Resp::BulkStr("set".to_string()), Resp::BulkStr("foo".to_string()),Resp::BulkStr("bar".to_string()),Resp::BulkStr("px".to_string()), Resp::Num(100)]);
         println!("{:?}", Encoder::encode(Resp::Arr(input)));
     }
+
+    #[test]
+    pub fn encode_int(){
+        let input = Resp::SimpleStr("hello".to_owned());
+        println!("{:?}", Encoder::encode(input));
+    }
 }

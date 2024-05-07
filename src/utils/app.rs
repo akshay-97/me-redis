@@ -12,7 +12,6 @@ pub fn handle_client(mut stream : TcpStream, state : &AppState){
         if count ==0{
             break;
         }
-
         let (parsed_input, _) = decode_resp(&buf).expect("unexpected decode");
 
         let mut response = Resp::Nil;
