@@ -5,7 +5,7 @@ use crate::utils::{dat::InMem, resp::{Resp, Encoder, decode_resp}};
 use super::resp::Message;
 
 pub fn handle_client(mut stream : TcpStream, state : &AppState){
-    let mut buf = [0;1024];
+    let mut buf = [0;512];
     loop {
         
         let count = stream.read(&mut buf).expect("read stream");
