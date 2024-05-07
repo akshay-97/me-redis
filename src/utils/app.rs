@@ -1,12 +1,14 @@
 use std::net::TcpStream;
-use std::io::{Read, Write};
+use std::io::{Read, Write, Error, ErrorKind};
 use crate::utils::{dat::InMem, resp::{Resp, Encoder, decode_resp}};
 
-pub fn handle_client(mut s : TcpStream, state : &AppState){
-    let mut buf = [0;512];
+use super::resp::Message;
+
+pub fn handle_client(mut stream : TcpStream, state : &AppState){
+    let mut buf = [0;1024];
     loop {
         
-        let count = s.read(&mut buf).expect("read stream");
+        let count = stream.read(&mut buf).expect("read stream");
         if count ==0{
             break;
         }
@@ -75,14 +77,21 @@ pub fn handle_client(mut s : TcpStream, state : &AppState){
                     },
                     Some(Resp::BulkStr(s)) if s == "PSYNC" => {
                         let dat = format!("+FULLRESYNC {} 0\r\n", state.server_info.get_repl_id().unwrap_or(""));
-                        response = Resp::SimpleStr(dat);
+                        stream.write_all(Encoder::encode(Resp::SimpleStr(dat)).unwrap().as_ref())
+                            .and_then(|_| stream.read(&mut [0;128]))
+                            .and_then(|_| std::fs::read("/Users/akshay.s/code/rst/codecrafters-redis-rust/src/utils/empty.rdb"))
+                            .and_then(|bytes_content| String::from_utf8(bytes_content).map_err(|_err| Error::new(ErrorKind::BrokenPipe, "bytes to string failed")))
+                            .and_then(|str_content| hex::decode(str_content).map_err(|_err|  Error::new(ErrorKind::BrokenPipe, "bytes to string failed")))
+                            .map(|file_contents| {response = Resp::FileContent(file_contents);}).unwrap();
+                        
                     },
                     _ => {}
                 }
             }
             _ => {}
         }
-        s.write_all(Encoder::encode(response).unwrap().as_bytes()).expect("stream should have written");
+        response.send(&mut stream, &mut [0;128]).expect("send response failed");
+        //stream.write_all(Encoder::encode(response).unwrap().as_ref()).expect("stream should have written");
     }
 }
 

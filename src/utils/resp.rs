@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, io::Write, net::TcpStream};
 
 #[derive(Debug, Clone)]
 pub enum Resp{
@@ -7,6 +7,7 @@ pub enum Resp{
     BulkStr(String),
     Nil,
     Arr(VecDeque<Resp>),
+    FileContent(Vec<u8>)
 }
 
 
@@ -145,20 +146,50 @@ pub trait Encoder {
 }
 
 impl Encoder for Resp{
-    type Output = String;
+    type Output = Vec<u8>;
     fn encode(self) -> Option<Self::Output>{
         match self{
             Resp::BulkStr(s) =>
-                Some(["$", format!("{}", s.len()).as_str(), STR_CLRF, s.as_str(), STR_CLRF].concat().to_owned()),
+                Some(["$", format!("{}", s.len()).as_str(), STR_CLRF, s.as_str(), STR_CLRF].concat().to_owned().into_bytes()),
             Resp::SimpleStr(s) =>
-                Some(["+", s.as_str(), STR_CLRF].concat().to_owned()),
+                Some(["+", s.as_str(), STR_CLRF].concat().to_owned().into_bytes()),
             Resp::Nil =>
-                Some("$-1\r\n".to_string()),
+                Some("$-1\r\n".to_string().into_bytes()),
+            // Resp::FileContent(mut file_contents) => {
+            //     let f = format!("${}\r\n", file_contents.len()).into_bytes();
+            //     f.append(file_contents);
+
+            //     
             _ => None,
         }
     }
 }
 
+pub trait Message : Encoder{
+    fn send(self, stream : &mut TcpStream, read_buf : &mut [u8]) -> Option<()>;
+}
+
+impl Message for Resp{
+    fn send(self, stream : &mut TcpStream, _read_buf : &mut [u8]) -> Option<()> {
+        match self{
+            Self::FileContent(file_contents) => {
+                let file_len = file_contents.len().to_string();
+                let msg1 = ["$", file_len.as_str(), STR_CLRF].concat().into_bytes();
+                stream.write(msg1.as_ref()).ok()?;
+                stream.write(file_contents.as_ref()).ok()?;
+                Some(())
+            },
+            other => {
+                let message =  other.encode()?;
+                stream.write_all(message.as_ref()).ok()?;
+                Some(())
+            }
+        }
+    }
+}
+// pub fn encode_file(input : &[u8]) -> &[u8]{
+
+// }
 #[cfg(test)]
 pub mod tests{
     use super::*;

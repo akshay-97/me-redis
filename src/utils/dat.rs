@@ -31,7 +31,6 @@ impl InMem{
     }
 
     pub fn set(&self, key: String, value : Resp, ttl : Option<u128>) -> Result<(), String>{
-        print!("what");
         let mut store = self.dat.lock().unwrap();
         let time_param = ttl
             .map(|t| (SystemTime::now(),t));
