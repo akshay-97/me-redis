@@ -78,7 +78,7 @@ pub fn handle_client(mut stream : TcpStream, state : &AppState){
                     Some(Resp::BulkStr(s)) if s == "PSYNC" => {
                         let dat = format!("+FULLRESYNC {} 0", state.server_info.get_repl_id().unwrap_or(""));
                         stream.write_all(Encoder::encode(Resp::SimpleStr(dat)).unwrap().as_ref())
-                            .and_then(|_| stream.read(&mut [0;128]))
+                            //.and_then(|_| stream.read(&mut [0;128]))
                             .and_then(|_| std::fs::read("src/utils/empty.rdb"))
                             .and_then(|bytes_content| String::from_utf8(bytes_content).map_err(|_err| Error::new(ErrorKind::BrokenPipe, "bytes to string failed")))
                             .and_then(|str_content| hex::decode(str_content).map_err(|_err|  Error::new(ErrorKind::BrokenPipe, "bytes to string failed")))
