@@ -12,6 +12,7 @@ pub fn handle_client(mut stream : TcpStream, state : &AppState){
         if count ==0{
             break;
         }
+        println!("what is input {:?}", String::from_utf8(Vec::from(buf)));
         let (parsed_input, _) = decode_resp(&buf).expect("unexpected decode");
 
         let mut response = Resp::Nil;
