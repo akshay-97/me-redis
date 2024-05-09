@@ -51,23 +51,15 @@ fn check_clrf(input : &[u8]) -> Result<&[u8], InputError>{
 }
 
 fn decode_string(input : &[u8]) -> Option<(String, &[u8])>{
-    let (len, strt) = input.split_at(1);
-    let str_len = std::str::from_utf8(len)
-            .ok()
-            .and_then(|x| x.parse::<i64>().ok())?;
-
-    check_clrf(strt)
+    let (str_len, inp) = decode_int(input)?;
+    std::str::from_utf8(&inp[..(str_len as usize)])
+        .map(|y| (y.to_string(), &inp[(str_len as usize)..]))
         .ok()
-        .and_then(|inp|{
-            std::str::from_utf8(&inp[..(str_len as usize)])
-                .map(|y| (y.to_string(), &inp[(str_len as usize)..]))
-                .ok()
-        })
         .and_then(|(res_str, rest)|
-            check_clrf(rest)
-            .map(|reste| (res_str, reste))
-            .ok()
-        )
+        check_clrf(rest)
+        .map(|reste| (res_str, reste))
+        .ok()
+    )
 }
 
 fn decode_simple_string(input : &[u8]) -> Option<(String, &[u8])>{
@@ -100,6 +92,7 @@ fn decode_int(input: &[u8]) -> Option<(i64, &[u8])>{
 // *1\r\n$4\r\nping\r\n
 fn decode_list(input : &[u8]) -> Option<(VecDeque<Resp>, &[u8])>{
     let (length, mut reste) = decode_int(input)?;
+    println!("length is {}", length);
     let mut vec_res = VecDeque::with_capacity(length as usize);
     if length == 0{
         return Some((vec_res, reste))
@@ -107,7 +100,6 @@ fn decode_list(input : &[u8]) -> Option<(VecDeque<Resp>, &[u8])>{
     let mut iter = 0;
     while iter < length  {
         if let Some((resp_result, rester)) = decode_resp(reste){
-            
             vec_res.push_back(resp_result);
             reste = rester;
             iter += 1;
@@ -208,9 +200,10 @@ pub mod tests{
 
     #[test]
     pub fn test_int(){
-        let input = "1\r\nasd".as_bytes();
+        let input = "10\r\nasd".as_bytes();
         let (r, _) = decode_int(input).unwrap();
-        assert_eq!(r, 1);
+        println!(" int is {}", r);
+        assert_eq!(r, 10);
     }
 
     #[test]
@@ -234,6 +227,12 @@ pub mod tests{
     #[test]
     pub fn decode_entry(){
         let input = "*5\r\n$3\r\nSET\r\n$6\r\nbanana\r\n$9\r\nraspberry\r\n$2\r\npx\r\n$3\r\n100\r\n".as_bytes();
+        println!("{:?}", decode_resp(input));
+    }
+
+    #[test]
+    pub fn decode_test(){
+        let input = "*5\r\n$3\r\nSET\r\n$9\r\npineapple\r\n$10\r\nstrawberry\r\n$2\r\npx\r\n$3\r\n100\r\n".as_bytes();
         println!("{:?}", decode_resp(input));
     }
 }

@@ -12,7 +12,7 @@ pub fn handle_client(mut stream : TcpStream, state : &AppState){
         if count ==0{
             break;
         }
-        println!("what is input {:?}", String::from_utf8(Vec::from(buf)));
+        //println!("what is input {:?}", String::from_utf8(Vec::from(buf)));
         let (parsed_input, _) = decode_resp(&buf).expect("unexpected decode");
 
         let mut response = Resp::Nil;
@@ -44,7 +44,7 @@ pub fn handle_client(mut stream : TcpStream, state : &AppState){
 
                     },
                     Some(Resp::BulkStr(s)) if s == "set" || s == "SET"=> {
-                        println!("strBulk {:?}" , list);
+                       // println!("strBulk {:?}" , list);
                         list
                             .pop_front()
                             .and_then(|x| x.get_str())
