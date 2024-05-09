@@ -24,7 +24,7 @@ pub fn handle_client(mut stream : TcpStream, state : &AppState){
             Resp::Arr(mut list) => {
                 let first_val  = list.pop_front();
                 match first_val {
-                    Some(Resp::BulkStr(s)) if s == "echo" => {
+                    Some(Resp::BulkStr(s)) if s == "echo" || s == "ECHO" => {
                         response = list
                             .pop_front()
                             .and_then(|x| if Resp::if_str(&x){
