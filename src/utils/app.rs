@@ -44,6 +44,7 @@ pub fn handle_client(mut stream : TcpStream, state : &AppState){
 
                     },
                     Some(Resp::BulkStr(s)) if s == "set" || s == "SET"=> {
+                        println!("strBulk {:?}" , s);
                         list
                             .pop_front()
                             .and_then(|x| x.get_str())
