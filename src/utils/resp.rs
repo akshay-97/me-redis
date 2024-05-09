@@ -230,4 +230,10 @@ pub mod tests{
         let input = Resp::SimpleStr("hello".to_owned());
         println!("{:?}", Encoder::encode(input));
     }
+
+    #[test]
+    pub fn decode_entry(){
+        let input = "*5\r\n$3\r\nSET\r\n$6\r\nbanana\r\n$9\r\nraspberry\r\n$2\r\npx\r\n$3\r\n100\r\n".as_bytes();
+        println!("{:?}", decode_resp(input));
+    }
 }
