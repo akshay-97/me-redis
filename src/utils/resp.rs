@@ -146,6 +146,19 @@ impl Encoder for Resp{
                 Some(["+", s.as_str(), STR_CLRF].concat().to_owned().into_bytes()),
             Resp::Nil =>
                 Some("$-1\r\n".to_string().into_bytes()),
+            Resp::Arr(arr) => {
+                let length = arr.len();
+                let mut res = Vec::new();
+                let header = ["*", length.to_string().as_str(), STR_CLRF].concat().to_owned().into_bytes();
+                res.extend(header);
+                let mut it = arr.into_iter();
+                while let Some(r) = it.next(){
+                    if let Some(r1) = r.encode(){
+                        res.extend(r1);
+                    }
+                }
+                Some(res)
+            }
             // Resp::FileContent(mut file_contents) => {
             //     let f = format!("${}\r\n", file_contents.len()).into_bytes();
             //     f.append(file_contents);

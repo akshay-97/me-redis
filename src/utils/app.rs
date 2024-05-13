@@ -11,6 +11,7 @@ pub fn handle_replication(rx : Receiver<Resp>, state: &AppState){
     loop {
         match rx.recv(){
             Ok(resp) => {
+                println!("debug: resp sent {:?}", resp);
                 let message = resp.encode();
                 state.server_info.send_to_replica(message);
             },
