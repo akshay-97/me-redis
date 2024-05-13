@@ -7,8 +7,8 @@ use clap::Parser;
 struct Cli{
     #[clap(short, long)]
     port : Option<u32>,
-    #[clap(long, num_args = 2)]
-    replicaof: Option<Vec<String>>,
+    #[clap(long)]
+    replicaof: Option<String>,
 }
 
 fn create_channel(is_master_server : bool) -> (Option<Sender<Resp>>, Option<Receiver<Resp>>){

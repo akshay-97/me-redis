@@ -216,7 +216,7 @@ impl ReplicaInfo{
 }
 
 impl AppState {
-    fn new(master_info : Option<Vec<String>>, current_port : u32, maybe_tx : Option<Sender<Resp>>) -> Self{
+    fn new(master_info : Option<String>, current_port : u32, maybe_tx : Option<Sender<Resp>>) -> Self{
         Self{
             store : InMem::new(),
             server_info: master_info
@@ -225,9 +225,10 @@ impl AppState {
                     master_repl_offset : 0,
                     commands_channel : maybe_tx.expect("commands channel not initiated"),
                     replication_connection_pool : Mutex::new(Vec::new()),
-                }), |mut master_inf| {
-                    let port = master_inf.pop().and_then(|x| x.parse::<u32>().ok()).unwrap_or(6379);
-                    let host = master_inf.pop().unwrap_or("localhost".to_string());
+                }), |master_inf| {
+                    let mut server_info : Vec<&str> = master_inf.split(" ").collect();
+                    let port = server_info.pop().and_then(|x| x.parse::<u32>().ok()).unwrap_or(6379);
+                    let host = server_info.pop().unwrap_or("localhost").to_string();
                     
                     let addr = format!("{}:{}", &host, &port);
                     let mut stream = TcpStream::connect(addr).expect("connection to master failed");
@@ -261,6 +262,6 @@ impl AppState {
     }
 }
 
-pub fn make_app_state(master_info : Option<Vec<String>>, current_port : u32, maybe_tx : Option<Sender<Resp>>) -> AppState{
+pub fn make_app_state(master_info : Option<String>, current_port : u32, maybe_tx : Option<Sender<Resp>>) -> AppState{
     AppState::new(master_info, current_port, maybe_tx)
 }
