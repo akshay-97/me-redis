@@ -22,7 +22,8 @@ pub fn handle_replication(rx : Receiver<Resp>, state: &AppState){
 
 enum NextOp{
     Read,
-    MoveToPool
+    MoveToPool,
+    ReadAndShare,
 }
 
 pub fn handle_client_2(mut stream : TcpStream, state: &AppState){
@@ -43,8 +44,11 @@ pub fn handle_client_2(mut stream : TcpStream, state: &AppState){
 
     match next_op{
         NextOp::MoveToPool => state.server_info.add_to_replication_pool(stream),
-        NextOp::Read => {
+        NextOp::ReadAndShare => {
             state.server_info.add_command_to_channel(response);
+            handle_client_2(stream, state);
+        },
+        NextOp::Read => {
             handle_client_2(stream, state);
         }
     }
@@ -99,6 +103,7 @@ fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Resp, state: &
                         })
                     }
                 ).map(|_| {*response = Resp::SimpleStr("OK".to_owned());});
+            res = NextOp::ReadAndShare;
         },
         Some(Resp::BulkStr(s)) if s == "INFO" || s == "info" => {
             *response = Resp::BulkStr(state.server_info.get_info());
