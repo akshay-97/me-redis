@@ -219,39 +219,43 @@ impl AppState {
     fn new(master_info : Option<String>, current_port : u32, maybe_tx : Option<Sender<Resp>>) -> Self{
         Self{
             store : InMem::new(),
-            server_info: master_info
-                .map_or(Info::Master(MasterInfo{
-                    master_replid : "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb".to_string(),
-                    master_repl_offset : 0,
-                    commands_channel : maybe_tx.expect("commands channel not initiated"),
-                    replication_connection_pool : Mutex::new(Vec::new()),
-                }), |master_inf| {
-                    let mut server_info : Vec<&str> = master_inf.split(" ").collect();
-                    let port = server_info.pop().and_then(|x| x.parse::<u32>().ok()).unwrap_or(6379);
-                    let host = server_info.pop().unwrap_or("localhost").to_string();
-                    
-                    let addr = format!("{}:{}", &host, &port);
-                    let mut stream = TcpStream::connect(addr).expect("connection to master failed");
-                    stream.write_all("*1\r\n$4\r\nping\r\n".as_bytes())
-                        .and_then(|_| stream.read(&mut [0;128]))
-                        .and_then(|_| {
-                            let request = format!("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n{}\r\n", current_port);
-                            stream.write_all(request.as_bytes())
+            server_info: 
+                match master_info{
+                    None => {
+                        Info::Master(MasterInfo{
+                            master_replid : "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb".to_string(),
+                            master_repl_offset : 0,
+                            commands_channel : maybe_tx.expect("commands channel not initiated"),
+                            replication_connection_pool : Mutex::new(Vec::new()),
                         })
-                        .and_then(|_| stream.read(&mut [0;128]))
-                        .and_then(|_| stream.write_all("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n".as_bytes()))
-                        .and_then(|_| stream.read(&mut [0;128]))
-                        .and_then(|_| stream.write_all("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n".as_bytes()))
-                        .and_then(|_| stream.read(&mut [0;128]))
-                        .expect("handshake to master failed");
+                    },
+                    Some(master_inf) => {
+                        let mut server_info : Vec<&str> = master_inf.split(" ").collect();
+                        let port = server_info.pop().and_then(|x| x.parse::<u32>().ok()).unwrap_or(6379);
+                        let host = server_info.pop().unwrap_or("localhost").to_string();
+                        
+                        let addr = format!("{}:{}", &host, &port);
+                        let mut stream = TcpStream::connect(addr).expect("connection to master failed");
+                        stream.write_all("*1\r\n$4\r\nping\r\n".as_bytes())
+                            .and_then(|_| stream.read(&mut [0;128]))
+                            .and_then(|_| {
+                                let request = format!("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n{}\r\n", current_port);
+                                stream.write_all(request.as_bytes())
+                            })
+                            .and_then(|_| stream.read(&mut [0;128]))
+                            .and_then(|_| stream.write_all("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n".as_bytes()))
+                            .and_then(|_| stream.read(&mut [0;128]))
+                            .and_then(|_| stream.write_all("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n".as_bytes()))
+                            .and_then(|_| stream.read(&mut [0;128]))
+                            .expect("handshake to master failed");
 
-                    Info::Replica(ReplicaInfo{
-                        _master_host : host,
-                        _master_port : port,
-                        //connection  : stream,
-                    })}
-                )
-        }
+                        Info::Replica(ReplicaInfo{
+                            _master_host : host,
+                            _master_port : port,
+                        })
+                    }
+                }
+            }
     }
 
     fn _is_master(&self) -> bool{

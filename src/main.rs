@@ -37,7 +37,6 @@ fn main() {
     
     let mut thread_pool = pool::Pool::new();
     let is_master_sv = args.replicaof.is_none();
-    //let (tx,rx)  = mpsc::channel::<Resp>();
     let (maybe_tx, maybe_rx) = create_channel(is_master_sv);
     let app_state = app::make_app_state(args.replicaof, port, maybe_tx);
     // this is unsafe, create rc instead
