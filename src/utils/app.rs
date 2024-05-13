@@ -35,17 +35,17 @@ pub fn handle_client_2(mut stream : TcpStream, state: &AppState){
     let (parsed_input, _) = decode_resp(&buf).expect("decode failed");
     let mut response = Resp::Nil;
 
-    let next_op = match parsed_input{
+    let next_op = match parsed_input.clone(){
         Resp::Arr(list) => handle_list_command(list, &mut response, state, &mut stream),
         _ =>  NextOp::Read,
     };
 
-    response.clone().send(&mut stream, &mut [0;128]).expect("write to stream");
+    response.send(&mut stream, &mut [0;128]).expect("write to stream");
 
     match next_op{
         NextOp::MoveToPool => state.server_info.add_to_replication_pool(stream),
         NextOp::ReadAndShare => {
-            state.server_info.add_command_to_channel(response);
+            state.server_info.add_command_to_channel(parsed_input);
             handle_client_2(stream, state);
         },
         NextOp::Read => {
