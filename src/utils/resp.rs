@@ -92,7 +92,6 @@ fn decode_int(input: &[u8]) -> Option<(i64, &[u8])>{
 // *1\r\n$4\r\nping\r\n
 fn decode_list(input : &[u8]) -> Option<(VecDeque<Resp>, &[u8])>{
     let (length, mut reste) = decode_int(input)?;
-    println!("length is {}", length);
     let mut vec_res = VecDeque::with_capacity(length as usize);
     if length == 0{
         return Some((vec_res, reste))
