@@ -33,14 +33,14 @@ pub fn handle_client_2(mut stream : TcpStream, state: &AppState){
     }
 
     let (parsed_input, _) = decode_resp(&buf).expect("decode failed");
-    let mut response = Resp::Nil;
+    let mut response = Some(Resp::Nil);
 
     let next_op = match parsed_input.clone(){
         Resp::Arr(list) => handle_list_command(list, &mut response, state, &mut stream),
         _ =>  NextOp::Read,
     };
 
-    response.send(&mut stream, &mut [0;128]).expect("write to stream");
+    response.map( |r| r.send(&mut stream, &mut [0;128]).expect("write to stream"));
 
     match next_op{
         NextOp::MoveToPool => state.server_info.add_to_replication_pool(stream),
@@ -55,27 +55,36 @@ pub fn handle_client_2(mut stream : TcpStream, state: &AppState){
 
 }
 
-fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Resp, state: &AppState, stream : &mut TcpStream) -> NextOp{
+fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Option<Resp>, state: &AppState, stream : &mut TcpStream) -> NextOp{
     let first_val  = list.pop_front();
     let mut res = NextOp::Read;
+    let mut respond = |resp, master_only| {
+        if !state._is_master() && master_only{
+            *response = None;
+        }
+        else{
+            *response = Some(resp);
+        }
+    };
     match first_val {
         Some(Resp::BulkStr(s)) if s == "echo" || s == "ECHO" => {
-            *response = list
+            let r = list
                 .pop_front()
                 .and_then(|x| if Resp::if_str(&x){
                     Some(x)
                 } else {None})
-                .expect("echo value invalid")
+                .expect("echo value invalid");
+            respond(r, true);
         },
         Some(Resp::BulkStr(s)) if s == "ping" || s == "PING" => {
-            *response = Resp::SimpleStr("PONG".to_owned());
+            respond(Resp::SimpleStr("PONG".to_owned()), true);
         },
         Some(Resp::BulkStr(s)) if s == "get" || s == "GET"=> {
             list
                 .pop_front()
                 .and_then(|x| x.get_str())
                 .and_then(|str_key| (&state.store).get(str_key.as_str()))
-                .map(|x| {*response = x;});
+                .map(|x| {respond(x, false);});
 
         },
         Some(Resp::BulkStr(s)) if s == "set" || s == "SET"=> {
@@ -102,14 +111,14 @@ fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Resp, state: &
                             (&state.store).set(str_key, v, ttl).ok()
                         })
                     }
-                ).map(|_| {*response = Resp::SimpleStr("OK".to_owned());});
+                ).map(|_| {respond(Resp::SimpleStr("OK".to_owned()), true);});
             res = NextOp::ReadAndShare;
         },
         Some(Resp::BulkStr(s)) if s == "INFO" || s == "info" => {
-            *response = Resp::BulkStr(state.server_info.get_info());
+            respond(Resp::BulkStr(state.server_info.get_info()), false);
         },
         Some(Resp::BulkStr(s)) if s == "REPLCONF" => {
-            *response =Resp::SimpleStr("OK".to_owned());
+            respond(Resp::SimpleStr("OK".to_owned()), true);
         },
         Some(Resp::BulkStr(s)) if s == "PSYNC" => {
             let dat = format!("+FULLRESYNC {} 0", state.server_info.get_repl_id().unwrap_or(""));
@@ -118,7 +127,7 @@ fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Resp, state: &
                 .and_then(|_| std::fs::read("src/utils/empty.rdb"))
                 .and_then(|bytes_content| String::from_utf8(bytes_content).map_err(|_err| Error::new(ErrorKind::BrokenPipe, "bytes to string failed")))
                 .and_then(|str_content| hex::decode(str_content).map_err(|_err|  Error::new(ErrorKind::BrokenPipe, "bytes to string failed")))
-                .map(|file_contents| {*response = Resp::FileContent(file_contents);}).unwrap();
+                .map(|file_contents| respond(Resp::FileContent(file_contents), true)).unwrap();
                 res = NextOp::MoveToPool;
             
         },
