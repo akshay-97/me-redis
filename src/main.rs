@@ -1,5 +1,5 @@
 mod utils;
-use utils::{app::{self, AppState, handle_replication}, pool, resp::Resp};
+use utils::{app::{self, get_replication_connection, handle_client_replication, handle_replication, AppState}, pool, resp::Resp};
 use std::{net::TcpListener, sync::mpsc::{self, Receiver, Sender}};
 use clap::Parser;
 
@@ -21,10 +21,17 @@ fn create_channel(is_master_server : bool) -> (Option<Sender<Resp>>, Option<Rece
     }
 }
 
-fn init_replication_thread(is_master_server : bool, maybe_rx : Option<Receiver<Resp>>, app_state : &'static AppState){
+fn init_replication_thread(is_master_server : bool
+    , maybe_rx : Option<Receiver<Resp>>
+    , app_state : &'static AppState
+    , replication_conn : Option<std::net::TcpStream>)
+{
     if is_master_server{
         let rx = maybe_rx.expect("expected channel recv to be initialized");
         std::thread::spawn(|| {handle_replication(rx, app_state);});
+    } else{
+        let stream = replication_conn.expect("replication connection missing");
+        std::thread::spawn(|| {handle_client_replication(stream, app_state);});
     }
 }
 
@@ -42,8 +49,8 @@ fn main() {
     // this is unsafe, create rc instead
     let app = Box::leak(Box::new(app_state));
     
-    
-    init_replication_thread(is_master_sv, maybe_rx, &*app);
+    let repl_conn = get_replication_connection(app);
+    init_replication_thread(is_master_sv, maybe_rx, &*app, repl_conn);
 
     for stream in listener.incoming() {
         match stream {

@@ -11,7 +11,7 @@ pub fn handle_replication(rx : Receiver<Resp>, state: &AppState){
     loop {
         match rx.recv(){
             Ok(resp) => {
-                println!("debug: resp sent {:?}", resp);
+                //println!("debug: resp sent {:?}", resp);
                 let message = resp.encode();
                 state.server_info.send_to_replica(message);
             },
@@ -26,11 +26,43 @@ enum NextOp{
     ReadAndShare,
 }
 
+pub fn handle_client_replication(mut stream : TcpStream, state: &AppState){
+    let mut buf = [0;512];
+    if stream.read(&mut buf).expect("read stream") == 0{
+        std::thread::sleep(std::time::Duration::from_millis(1000))
+    }
+
+    //println!(" debug : request is {:?}" , String::from_utf8(Vec::from(buf)));
+
+    match decode_resp(&buf){
+        None => {
+            println!("response cant be decoded, ignoring message");
+            handle_client_replication(stream, state)
+        },
+        Some((parsed_input,_)) =>{
+    
+            let mut response = Some(Resp::Nil);
+
+            let _next_op = match parsed_input.clone(){
+                Resp::Arr(list) => handle_list_command(list, &mut response, state, &mut stream),
+                _ =>  NextOp::Read,
+            };
+
+            response.map( |r| r.send(&mut stream, &mut [0;128]).expect("write to stream"));
+            
+            handle_client_replication(stream, state);
+            
+        }
+    };
+}
+
 pub fn handle_client_2(mut stream : TcpStream, state: &AppState){
     let mut buf = [0;512];
     if stream.read(&mut buf).expect("read stream") == 0{
         return
     }
+
+    //println!(" debug : request is {:?}" , String::from_utf8(Vec::from(buf)));
 
     let (parsed_input, _) = decode_resp(&buf).expect("decode failed");
     let mut response = Some(Resp::Nil);
@@ -192,6 +224,15 @@ impl Info{
             Info::Replica(_) => println!("warn: replica cant store stream in pool"),
         }
     }
+
+    fn get_replication_connection(&mut self) -> Option<TcpStream>{
+        match self{
+            Info::Master(_) => None,
+            Info::Replica(r) => {
+                std::mem::take(&mut r._connection)
+            }
+        }
+    }
 }
 
 struct MasterInfo {
@@ -211,11 +252,10 @@ impl MasterInfo{
     }
 }
 
-#[derive(Clone)]
 struct ReplicaInfo {
     _master_host : String,
     _master_port : u32,
-    //connection : Rc<TcpStream>
+    _connection : Option<TcpStream>
 }
 
 impl ReplicaInfo{
@@ -262,6 +302,7 @@ impl AppState {
                         Info::Replica(ReplicaInfo{
                             _master_host : host,
                             _master_port : port,
+                            _connection : Some(stream),
                         })
                     }
                 }
@@ -278,4 +319,8 @@ impl AppState {
 
 pub fn make_app_state(master_info : Option<String>, current_port : u32, maybe_tx : Option<Sender<Resp>>) -> AppState{
     AppState::new(master_info, current_port, maybe_tx)
+}
+
+pub fn get_replication_connection(app : &mut AppState) -> Option<TcpStream>{
+    app.server_info.get_replication_connection()
 }
