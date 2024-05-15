@@ -193,7 +193,20 @@ fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Option<Resp>, 
             respond(Resp::BulkStr(state.server_info.get_info()), false);
         },
         Some(Resp::BulkStr(s)) if s == "REPLCONF" => {
-            respond(Resp::SimpleStr("OK".to_owned()), true);
+            let is_ack = list
+                .pop_front()
+                .and_then(|x| x.get_str())
+                .map(|x| x == "GETACK")
+                .unwrap_or(false);
+            if is_ack{
+                let mut r_list = VecDeque::new();
+                r_list.push_back(Resp::BulkStr("REPLCONF".to_owned()));
+                r_list.push_back(Resp::BulkStr("ACK".to_owned()));
+                r_list.push_back(Resp::BulkStr("0".to_owned()));
+                respond(Resp::Arr(r_list), false);
+            }
+            else {respond(Resp::SimpleStr("OK".to_owned()), true);}
+            
         },
         Some(Resp::BulkStr(s)) if s == "PSYNC" => {
             let dat = format!("+FULLRESYNC {} 0", state.server_info.get_repl_id().unwrap_or(""));
