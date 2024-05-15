@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::mem::MaybeUninit;
 use std::net::TcpStream;
 use std::io::{Read, Write, Error, ErrorKind};
 use std::sync::mpsc::{Sender, Receiver};
@@ -11,7 +12,7 @@ pub fn handle_replication(rx : Receiver<Resp>, state: &AppState){
     loop {
         match rx.recv(){
             Ok(resp) => {
-                //println!("debug: resp sent {:?}", resp);
+                println!("debug: resp sent {:?}", resp);
                 let message = resp.encode();
                 state.server_info.send_to_replica(message);
             },
@@ -28,63 +29,105 @@ enum NextOp{
 
 pub fn handle_client_replication(mut stream : TcpStream, state: &AppState){
     let mut buf = [0;512];
-    if stream.read(&mut buf).expect("read stream") == 0{
-        std::thread::sleep(std::time::Duration::from_millis(1000))
-    }
+    let mut rem : Vec<u8> = Vec::new();
+    loop {
 
-    //println!(" debug : request is {:?}" , String::from_utf8(Vec::from(buf)));
+        let source : &[u8];
+        let mut read_count:usize = 0;
 
-    match decode_resp(&buf){
-        None => {
-            println!("response cant be decoded, ignoring message");
-            handle_client_replication(stream, state)
-        },
-        Some((parsed_input,_)) =>{
-    
-            let mut response = Some(Resp::Nil);
-
-            let _next_op = match parsed_input.clone(){
-                Resp::Arr(list) => handle_list_command(list, &mut response, state, &mut stream),
-                _ =>  NextOp::Read,
-            };
-
-            response.map( |r| r.send(&mut stream, &mut [0;128]).expect("write to stream"));
-            
-            handle_client_replication(stream, state);
-            
+        if rem.is_empty(){
+            read_count = stream.read(&mut buf).expect("read stream");
+            if read_count == 0{
+                break
+            }
+            source = &buf;
         }
-    };
-}
+        else{
+            source = &rem;
+        }
 
+        println!(" debug : request is {:?}" , String::from_utf8(Vec::from(source)));
+
+        match decode_resp(&source){
+            None => {
+                println!("response cant be decoded, ignoring message");
+                rem.clear();
+                //handle_client_replication(stream, state)
+            },
+            Some((parsed_input,remainder)) =>{
+        
+                let mut response = Some(Resp::Nil);
+
+                let _next_op = match parsed_input.clone(){
+                    Resp::Arr(list) => handle_list_command(list, &mut response, state, &mut stream),
+                    _ =>  NextOp::Read,
+                };
+
+                response.map( |r| r.send(&mut stream, &mut [0;128]).expect("write to stream"));
+                
+                if read_count != (512 - remainder.len()){
+                    rem  = Vec::from(remainder);
+                }
+
+                
+            }
+        };
+    }
+}
+//PLS REFACTOR
 pub fn handle_client_2(mut stream : TcpStream, state: &AppState){
     let mut buf = [0;512];
-    if stream.read(&mut buf).expect("read stream") == 0{
-        return
-    }
+    let mut rem : Vec<u8> = Vec::new();
 
-    //println!(" debug : request is {:?}" , String::from_utf8(Vec::from(buf)));
+    //read_buf(&mut self, buf: BorrowedCursor<'_>);
+    //let mut borrowed_buf = buf.into();
+    loop {
+        let source : &[u8];
+        let mut read_count :usize = 0;
 
-    let (parsed_input, _) = decode_resp(&buf).expect("decode failed");
-    let mut response = Some(Resp::Nil);
-
-    let next_op = match parsed_input.clone(){
-        Resp::Arr(list) => handle_list_command(list, &mut response, state, &mut stream),
-        _ =>  NextOp::Read,
-    };
-
-    response.map( |r| r.send(&mut stream, &mut [0;128]).expect("write to stream"));
-
-    match next_op{
-        NextOp::MoveToPool => state.server_info.add_to_replication_pool(stream),
-        NextOp::ReadAndShare => {
-            state.server_info.add_command_to_channel(parsed_input);
-            handle_client_2(stream, state);
-        },
-        NextOp::Read => {
-            handle_client_2(stream, state);
+        if rem.is_empty(){
+            read_count = stream.read(&mut buf).expect("read stream");
+            if read_count == 0{
+                break
+            }
+            source = &buf;
         }
-    }
+        else{
+            source = &rem;
+        }
 
+        println!(" debug : request is {:?}" , String::from_utf8(Vec::from(source)));
+
+        let (parsed_input, remainder) = decode_resp(source).expect("decode failed");
+        if read_count != (512 - remainder.len()){
+            rem  = Vec::from(remainder);
+        }
+        
+
+        let mut response = Some(Resp::Nil);
+
+        let next_op = match parsed_input.clone(){
+            Resp::Arr(list) => handle_list_command(list, &mut response, state, &mut stream),
+            _ =>  NextOp::Read,
+        };
+
+        response.map( |r| r.send(&mut stream, &mut [0;128]).expect("write to stream"));
+
+        match next_op{
+            NextOp::MoveToPool => {
+                state.server_info.add_to_replication_pool(stream);
+                break;
+            },
+            NextOp::ReadAndShare => {
+                state.server_info.add_command_to_channel(parsed_input);
+                //handle_client_2(stream, state);
+            },
+            NextOp::Read => {
+                //handle_client_2(stream, state);
+            }
+        }
+        //buf[] = *remainder;
+    }
 }
 
 fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Option<Resp>, state: &AppState, stream : &mut TcpStream) -> NextOp{
