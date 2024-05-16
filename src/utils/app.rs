@@ -199,7 +199,7 @@ fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Option<Resp>, 
             let is_ack = list
                 .pop_front()
                 .and_then(|x| x.get_str())
-                .map(|x| x == "GETACK")
+                .map(|x| x == "GETACK" || x == "getack")
                 .unwrap_or(false);
             if is_ack{
                 let mut r_list = VecDeque::new();
