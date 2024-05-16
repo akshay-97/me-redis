@@ -37,7 +37,7 @@ pub fn handle_client_replication(mut stream : TcpStream, state: &AppState){
         if rem.is_empty(){
             read_count = stream.read(&mut buf).expect("read stream");
             if read_count == 0{
-                break
+                continue
             }
             source = &buf;
         }
