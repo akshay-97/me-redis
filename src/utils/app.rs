@@ -1,9 +1,8 @@
 use std::collections::VecDeque;
-use std::mem::MaybeUninit;
 use std::net::TcpStream;
 use std::io::{Read, Write, Error, ErrorKind};
 use std::sync::mpsc::{Sender, Receiver};
-use std::sync::Mutex;
+use std::sync::{atomic, Mutex, Arc};
 use crate::utils::{dat::InMem, resp::{Resp, Encoder, decode_resp}};
 
 use super::resp::Message;
@@ -59,7 +58,7 @@ pub fn handle_client_replication(mut stream : TcpStream, state: &AppState){
                 let mut response = Some(Resp::Nil);
 
                 let _next_op = match parsed_input.clone(){
-                    Resp::Arr(list) => handle_list_command(list, &mut response, state, &mut stream),
+                    Resp::Arr(list) => handle_list_command(list, &mut response, state, &mut stream, source.len() - remainder.len()),
                     _ =>  NextOp::Read,
                 };
 
@@ -99,19 +98,21 @@ pub fn handle_client_2(mut stream : TcpStream, state: &AppState){
         println!(" debug : request is {:?}" , String::from_utf8(Vec::from(source)));
 
         let (parsed_input, remainder) = decode_resp(source).expect("decode failed");
-        if read_count != (512 - remainder.len()){
-            rem  = Vec::from(remainder);
-        }
+        
         
 
         let mut response = Some(Resp::Nil);
 
         let next_op = match parsed_input.clone(){
-            Resp::Arr(list) => handle_list_command(list, &mut response, state, &mut stream),
+            Resp::Arr(list) => handle_list_command(list, &mut response, state, &mut stream, source.len() - remainder.len()),
             _ =>  NextOp::Read,
         };
 
         response.map( |r| r.send(&mut stream, &mut [0;128]).expect("write to stream"));
+
+        if read_count != (512 - remainder.len()){
+            rem  = Vec::from(remainder);
+        }
 
         match next_op{
             NextOp::MoveToPool => {
@@ -130,7 +131,7 @@ pub fn handle_client_2(mut stream : TcpStream, state: &AppState){
     }
 }
 
-fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Option<Resp>, state: &AppState, stream : &mut TcpStream) -> NextOp{
+fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Option<Resp>, state: &AppState, stream : &mut TcpStream, num_bytes: usize) -> NextOp{
     let first_val  = list.pop_front();
     let mut res = NextOp::Read;
     let mut respond = |resp, master_only| {
@@ -153,6 +154,7 @@ fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Option<Resp>, 
         },
         Some(Resp::BulkStr(s)) if s == "ping" || s == "PING" => {
             respond(Resp::SimpleStr("PONG".to_owned()), true);
+            state.update_ack_bytes(num_bytes);
         },
         Some(Resp::BulkStr(s)) if s == "get" || s == "GET"=> {
             list
@@ -188,6 +190,7 @@ fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Option<Resp>, 
                     }
                 ).map(|_| {respond(Resp::SimpleStr("OK".to_owned()), true);});
             res = NextOp::ReadAndShare;
+            state.update_ack_bytes(num_bytes);
         },
         Some(Resp::BulkStr(s)) if s == "INFO" || s == "info" => {
             respond(Resp::BulkStr(state.server_info.get_info()), false);
@@ -202,10 +205,12 @@ fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Option<Resp>, 
                 let mut r_list = VecDeque::new();
                 r_list.push_back(Resp::BulkStr("REPLCONF".to_owned()));
                 r_list.push_back(Resp::BulkStr("ACK".to_owned()));
-                r_list.push_back(Resp::BulkStr("0".to_owned()));
+                r_list.push_back(Resp::BulkStr(state.get_ack_bytes().to_string()));
                 respond(Resp::Arr(r_list), false);
             }
             else {respond(Resp::SimpleStr("OK".to_owned()), true);}
+
+            state.update_ack_bytes(num_bytes);
             
         },
         Some(Resp::BulkStr(s)) if s == "PSYNC" => {
@@ -311,7 +316,8 @@ impl MasterInfo{
 struct ReplicaInfo {
     _master_host : String,
     _master_port : u32,
-    _connection : Option<TcpStream>
+    _connection : Option<TcpStream>,
+    ack_bytes : Arc<atomic::AtomicU64>,
 }
 
 impl ReplicaInfo{
@@ -359,6 +365,7 @@ impl AppState {
                             _master_host : host,
                             _master_port : port,
                             _connection : Some(stream),
+                            ack_bytes : Arc::new(atomic::AtomicU64::new(0))
                         })
                     }
                 }
@@ -369,6 +376,20 @@ impl AppState {
         match (&self).server_info{
             Info::Master(_) => true,
             Info::Replica(_) => false,
+        }
+    }
+
+    fn get_ack_bytes(&self) -> u64{
+        match &self.server_info{
+            Info::Master(_) => 0,
+            Info::Replica(repl) => repl.ack_bytes.load(atomic::Ordering::Acquire),
+        }
+    }
+
+    fn update_ack_bytes(&self, u : usize) {
+        match &self.server_info{
+            Info::Master(_) => {},
+            Info::Replica(repl) => {repl.ack_bytes.fetch_add(u as u64, atomic::Ordering::SeqCst);},
         }
     }
 }
