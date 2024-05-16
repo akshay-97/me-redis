@@ -158,7 +158,9 @@ impl Encoder for Resp{
                     }
                 }
                 Some(res)
-            }
+            },
+            Resp::Num(num) =>
+                Some(format!(":{}\r\n", num).into_bytes()),
             // Resp::FileContent(mut file_contents) => {
             //     let f = format!("${}\r\n", file_contents.len()).into_bytes();
             //     f.append(file_contents);
