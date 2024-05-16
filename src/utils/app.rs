@@ -225,7 +225,7 @@ fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Option<Resp>, 
             
         },
         Some(Resp::BulkStr(s)) if s == "WAIT" => {
-            respond(Resp::Num(0), true);
+            respond(Resp::Num(state.get_replicas_connected() as i64), true);
         },
         _ => {}
     }
@@ -393,6 +393,16 @@ impl AppState {
         match &self.server_info{
             Info::Master(_) => {},
             Info::Replica(repl) => {repl.ack_bytes.fetch_add(u as u64, atomic::Ordering::SeqCst);},
+        }
+    }
+
+    fn get_replicas_connected(&self) -> usize {
+        match &self.server_info{
+            Info::Replica(_) => 0,
+            Info::Master(m) => {
+                let pool = m.replication_connection_pool.lock().unwrap();
+                pool.len()
+            }
         }
     }
 }
