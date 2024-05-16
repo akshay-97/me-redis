@@ -84,7 +84,7 @@ pub fn handle_client_2(mut stream : TcpStream, state: &AppState){
         let source : &[u8];
         let mut read_count :usize = 0;
 
-        if rem.is_empty(){
+        if check_empty(&rem){
             read_count = stream.read(&mut buf).expect("read stream");
             if read_count == 0{
                 break
@@ -403,4 +403,18 @@ pub fn make_app_state(master_info : Option<String>, current_port : u32, maybe_tx
 
 pub fn get_replication_connection(app : &mut AppState) -> Option<TcpStream>{
     app.server_info.get_replication_connection()
+}
+
+
+fn check_empty(buf : &Vec<u8>) -> bool{
+    if buf.is_empty(){
+        return true
+    }
+
+    for i in buf{
+        if *i != 0{
+            return false
+        }
+    }
+    return true
 }

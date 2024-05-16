@@ -22,6 +22,10 @@ fn test_replication(){
     replica_stream.write_all("*2\r\n$3\r\nGET\r\n$3\r\nyel\r\n".as_bytes()).unwrap();
     replica_stream.read(&mut buf).expect("read failed");
     println!("client resp {:?}", String::from_utf8(Vec::from(buf)));
+
+    replica_stream.write_all("*3\r\n$8\r\nREPLCONF\r\n$6\r\ngetack\r\n$1\r\n*\r\n".as_bytes()).unwrap();
+    replica_stream.read(&mut buf).expect("read failed");
+    println!("client resp {:?}", String::from_utf8(Vec::from(buf)));
     loop {
         
     }
