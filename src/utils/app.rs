@@ -224,6 +224,9 @@ fn handle_list_command(mut list : VecDeque<Resp> , response :&mut Option<Resp>, 
                 res = NextOp::MoveToPool;
             
         },
+        Some(Resp::BulkStr(s)) if s == "WAIT" => {
+            respond(Resp::Num(0), true);
+        },
         _ => {}
     }
     res
